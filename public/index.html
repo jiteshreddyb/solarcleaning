@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#12372c">
+  <meta name="description" content="Evaluate a solar array wash against waiting, using recoverable DC current, clipped AC energy, wash cost and rain timing.">
+  <title>Heliofield · Cleaning operations</title>
+  <link rel="icon" href="./assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="preload" href="./assets/dm-sans.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./assets/pv-field.webp" as="image">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to overview</a>
+  <header class="app-bar">
+    <div class="bar-inner">
+      <a class="brand" href="#overview" aria-label="Heliofield overview">
+        <img src="./assets/mark.svg" width="34" height="34" alt="">
+        <span>Heliofield</span>
+      </a>
+      <nav class="primary-nav" aria-label="Workspace">
+        <a href="#overview" class="nav-active" id="overview-nav">Overview</a>
+        <a href="#history" id="history-nav">Decision history</a>
+        <button type="button" data-open="method">Method</button>
+      </nav>
+      <button type="button" class="button settings-button" data-open="settings"><i data-icon="sliders"></i>Farm settings</button>
+    </div>
+  </header>
+
+  <main id="main" class="page">
+    <div id="load-error" class="error-panel" role="alert" hidden></div>
+    <section id="overview" aria-labelledby="page-title">
+      <div class="overview-heading">
+        <div>
+          <h1 id="page-title">Cleaning overview</h1>
+          <div class="farm-meta">
+            <span><i data-icon="pin"></i><b id="site-name">Dubai reference farm</b></span>
+            <span class="meta-divider"></span><span id="site-size">10 MWp DC</span>
+            <span class="source-tag" id="site-source"><i data-icon="archive"></i><span>Historical replay</span></span>
+          </div>
+        </div>
+        <div class="date-stepper" aria-label="Decision date">
+          <button type="button" id="prev-date" aria-label="Previous decision day"><i data-icon="left"></i></button>
+          <label class="date-display">
+            <i data-icon="calendar"></i><span id="date-label">14 Aug 2025</span>
+            <input type="date" id="issue-date" aria-label="Choose decision date">
+          </label>
+          <button type="button" id="next-date" aria-label="Next decision day"><i data-icon="right"></i></button>
+        </div>
+      </div>
+
+      <p id="data-age" class="age-note" hidden></p>
+      <section class="dispatch-hero" aria-labelledby="dispatch-title">
+        <div class="hero-art" role="img" aria-label="Illustrative aerial view of a desert photovoltaic array"></div>
+        <div class="hero-content">
+          <div class="dispatch-label"><i data-icon="radar"></i>Dispatch recommendation</div>
+          <h2 id="dispatch-title">Evaluating wash…</h2>
+          <p id="dispatch-copy">Loading the hourly reference record.</p>
+          <button type="button" class="hero-button" data-open="decision">Inspect decision<i data-icon="arrow-right"></i></button>
+        </div>
+        <span class="photo-label"><i data-icon="aperture"></i>Illustrative array</span>
+      </section>
+
+      <div class="metrics" aria-label="Decision indicators">
+        <button class="metric" type="button" data-detail="soil">
+          <span class="metric-label"><span class="tile-icon gold"><i data-icon="sun-dust"></i></span>Soiling loss</span>
+          <span class="metric-value" id="m-loss">—</span><span class="metric-caption">At the decision time</span>
+        </button>
+        <button class="metric" type="button" data-detail="current">
+          <span class="metric-label"><span class="tile-icon mint"><i data-icon="activity"></i></span>Recoverable DC current</span>
+          <span class="metric-value" id="m-current">—</span><span class="metric-caption" id="current-caption">At the reference load</span>
+        </button>
+        <button class="metric" type="button" data-detail="energy">
+          <span class="metric-label"><span class="tile-icon blue"><i data-icon="bolt"></i></span>Recoverable AC energy</span>
+          <span class="metric-value" id="m-energy">—</span><span class="metric-caption" id="energy-caption">Over the forecast window</span>
+        </button>
+        <button class="metric" type="button" data-detail="net">
+          <span class="metric-label"><span class="tile-icon lilac"><i data-icon="wallet"></i></span>Net wash value</span>
+          <span class="metric-value" id="m-net">—</span><span class="metric-caption">After the full wash cost</span>
+        </button>
+      </div>
+    </section>
+
+    <div class="analysis-grid">
+      <section class="panel chart-panel" aria-labelledby="chart-heading">
+        <div class="panel-head">
+          <div><h2 id="chart-heading">Recovery forecast</h2><p>Cumulative gain from cleaning compared with waiting.</p></div>
+          <div class="segment" role="group" aria-label="Chart units">
+            <button type="button" data-unit="energy" aria-pressed="true">Energy</button>
+            <button type="button" data-unit="value" aria-pressed="false">Value</button>
+          </div>
+        </div>
+        <div class="legend"><span><b class="sample-line"></b>Recovered <span id="legend-unit">energy</span></span><span><b class="sample-line dashed"></b>Wash break-even</span></div>
+        <div id="chart" class="chart" tabindex="0" role="group" aria-label="Recovery forecast. Use the left and right arrow keys to inspect a forecast day."></div>
+        <div class="chart-foot"><span><i data-icon="clock"></i><span id="chart-issue">Issue time 00:00 UTC</span></span><span id="chart-range">30-day horizon</span></div>
+      </section>
+      <section class="panel rain-panel" aria-labelledby="rain-heading">
+        <div class="rain-head"><span class="rain-icon"><i data-icon="cloud-rain"></i></span><span class="scenario-tag">What-if scenario</span></div>
+        <h2 id="rain-heading">Rain sensitivity</h2>
+        <p>Test how an effective rainfall changes the value of washing.</p>
+        <div class="rain-control"><label for="rain-day">Effective rain arrives</label><output for="rain-day" id="rain-value">No rain</output></div>
+        <input type="range" id="rain-day" min="1" max="31" value="31" step="1" aria-label="Effective rain arrival">
+        <div class="range-ends"><span>Day 1</span><button type="button" id="rain-reset">Dry horizon</button></div>
+        <div class="rain-result"><i data-icon="target"></i><div><span>Dry days to cover wash cost</span><strong id="payback-days">—</strong></div></div>
+      </section>
+    </div>
+
+    <section class="panel history-panel" id="history" aria-labelledby="history-heading">
+      <div class="panel-head history-head">
+        <div><h2 id="history-heading">Decision history</h2><p id="history-description">Dry-outlook decisions up to the selected date.</p></div>
+        <div class="history-actions">
+          <label class="select-wrap"><select id="history-filter" aria-label="Filter decision history"><option value="all">All decisions</option><option value="clean">Wash signals</option></select><i data-icon="down"></i></label>
+          <button type="button" class="button export-button" id="export-history"><i data-icon="download"></i>Export CSV</button>
+        </div>
+      </div>
+      <div class="table-scroll"><table><thead><tr><th>Decision date</th><th>Dry signal</th><th>Soiling loss</th><th>AC recovery</th><th>Net value</th><th><span class="sr-only">Inspect</span></th></tr></thead><tbody id="history-body"></tbody></table></div>
+      <div class="history-foot"><span id="history-count"></span><div><button id="history-newer" type="button" aria-label="Show newer decisions"><i data-icon="left"></i></button><button id="history-older" type="button" aria-label="Show older decisions"><i data-icon="right"></i></button></div></div>
+    </section>
+    <footer><span class="footer-brand"><img src="./assets/mark.svg" width="19" height="19" alt="">Heliofield</span><span class="footer-note">PV cleaning decision support</span><button data-open="method" type="button"><i data-icon="book"></i>Model notes &amp; sources</button></footer>
+  </main>
+  <p class="sr-only" id="announce" aria-live="polite"></p>
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <form id="settings-form">
+      <div class="dialog-head"><div><span class="dialog-kicker">Workspace</span><h2 id="settings-title">Farm settings</h2></div><button class="icon-button" data-close type="button" aria-label="Close settings"><i data-icon="x"></i></button></div>
+      <div class="dialog-body">
+        <div class="mode-switch" role="group" aria-label="Data source"><button type="button" data-source="reference" aria-pressed="true"><i data-icon="archive"></i>Reference replay</button><button type="button" data-source="farm" aria-pressed="false"><i data-icon="upload"></i>My farm</button></div>
+        <p id="source-explanation" class="form-intro"></p>
+        <div id="import-area" hidden>
+          <div class="import-box"><i data-icon="file"></i><div><label for="farm-csv">Hourly farm CSV</label><span id="import-file-state">Choose your hourly data file.</span></div><label class="button file-button">Choose file<input type="file" id="farm-csv" accept=".csv,text/csv" aria-label="Choose hourly farm CSV"></label></div>
+          <div class="import-help"><button class="text-btn" type="button" id="get-template"><i data-icon="download"></i>Example CSV</button><button class="text-btn" type="button" id="show-schema" aria-expanded="false">Column guide<i data-icon="down"></i></button></div>
+          <div class="schema-box" id="schema" hidden><p>Use consecutive full UTC days starting at midnight. Supply 7–732 days, one row per hour. The example contains seven illustrative days from Dubai.</p><dl>
+            <dt>timestamp_utc</dt><dd>Hour start, e.g. 2025-01-01T00:00:00Z.</dd>
+            <dt>clean_dc_kw</dt><dd>Expected dust-free DC power of the block in kW before system losses. Use a calibrated clean reference or plant model.</dd>
+            <dt>pm10_ug_m3, pm25_ug_m3</dt><dd>Ambient total PM10 and fine PM2.5 in µg/m³.</dd>
+            <dt>rain_mm</dt><dd>Hourly precipitation in mm.</dd>
+            <dt>wash_completed</dt><dd>1 at the hour a manual wash began, 0 otherwise. Past decisions use these recorded washes.</dd>
+          </dl></div>
+        </div>
+        <label class="field full" for="farm-name">Farm or block name<input id="farm-name" name="name" maxlength="60" required></label>
+        <div class="fields-grid">
+          <label class="field">Electricity value <span>AED/kWh</span><input type="number" name="tariff" min="0" max="1000" step="any" required></label>
+          <label class="field">Full wash cost <span>AED</span><input type="number" name="washCost" min="0" max="1000000000" step="any" required></label>
+          <label class="field">Operating DC voltage <span>V</span><input type="number" name="voltage" min="1" max="3000" step="any" required></label>
+          <label class="field">Inverter AC limit <span>kW</span><input type="number" name="acLimit" min=".001" max="100000000" step="any" required></label>
+          <label class="field">Forecast horizon <span>days</span><input type="number" name="horizon" min="1" max="90" step="1" required></label>
+          <label class="field">Dust removed per wash <span>% by mass</span><input type="number" name="washRemoval" min="0" max="100" step="any" required></label>
+        </div>
+        <details class="advanced"><summary>Physical assumptions<i data-icon="down"></i></summary><div class="fields-grid">
+          <label class="field">Panel tilt <span>degrees</span><input type="number" name="tilt" min="0" max="90" step="any" required></label>
+          <label class="field">24 h rain reset <span>mm</span><input type="number" name="rainThreshold" min=".01" max="1000" step="any" required></label>
+          <label class="field">Inverter efficiency <span>%</span><input type="number" name="inverterEfficiency" min="1" max="100" step="any" required></label>
+          <label class="field">Other system losses <span>%</span><input type="number" name="otherLoss" min="0" max="99" step="any" required></label>
+          <label class="field">Initial deposited mass <span>g/m²</span><input type="number" name="initialMass" min="0" max="10" step="any" required></label>
+        </div></details>
+        <p class="form-error" id="settings-error" role="alert" hidden></p>
+      </div>
+      <div class="dialog-foot"><span><i data-icon="device"></i>Saved on this browser</span><button type="submit" class="dark-button" id="apply-settings">Apply settings<i data-icon="right"></i></button></div>
+    </form>
+  </dialog>
+
+  <dialog id="decision-dialog" aria-labelledby="detail-title">
+    <div class="dialog-head"><div><span class="dialog-kicker">Decision evidence</span><h2 id="detail-title">Wash calculation</h2></div><button type="button" class="icon-button" data-close aria-label="Close decision"><i data-icon="x"></i></button></div>
+    <div class="dialog-body">
+      <p id="detail-context" class="form-intro"></p>
+      <dl class="ledger" id="calculation"></dl>
+      <details class="advanced" id="string-check"><summary>Paired-string current check<i data-icon="down"></i></summary>
+        <p class="helper">Compare matched strings at the same irradiance, temperature and operating voltage. This check is independent of the array forecast.</p>
+        <div class="fields-grid"><label class="field">Clean reference <span>A</span><input type="number" id="string-clean" min=".001" step="any" placeholder="e.g. 10.2"></label><label class="field">Soiled string <span>A</span><input type="number" id="string-soiled" min="0" step="any" placeholder="e.g. 9.5"></label></div>
+        <output id="string-result" aria-live="polite">Enter both readings to compare string current.</output>
+      </details>
+    </div>
+    <div class="dialog-foot"><button class="text-btn" type="button" data-open="method">Model notes<i data-icon="arrow-up-right"></i></button><button type="button" class="dark-button" id="export-decision"><i data-icon="download"></i>Export decision</button></div>
+  </dialog>
+
+  <dialog id="method-dialog" aria-labelledby="method-heading">
+    <div class="dialog-head"><div><span class="dialog-kicker">Technical reference</span><h2 id="method-heading">Model notes</h2></div><button type="button" class="icon-button" data-close aria-label="Close model notes"><i data-icon="x"></i></button></div>
+    <div class="dialog-body notes">
+      <h3>How the decision is made</h3><p>At 00:00 UTC the model compares washing once with waiting for the entire horizon. Both paths repeat the preceding seven days’ mean hourly clean power and particle deposition. The recommendation turns positive when the value of extra AC energy exceeds the full wash cost.</p>
+      <code>Net value = ΔAC energy × tariff − wash cost</code>
+      <h3>From airborne dust to lost output</h3><p>Fine and coarse particles settle at 0.0009 and 0.004 m/s. The HSU model converts accumulated mass into a soiling ratio. Each path applies that ratio to clean DC power, includes system losses and inverter efficiency, and clips AC power at the inverter limit before summing hourly energy. The published mass range extends to 10 g/m².</p>
+      <code>SR = 1 − 0.3437 erf(0.17 × mass<sup>0.8473</sup>)</code>
+      <h3>What the amps mean</h3><p>The reference load is the highest hourly clean DC power in the trailing seven-day mean profile. Both wash states use that load and the same configured operating voltage. The result is an array-equivalent current gain at that operating point. Matched string readings can be checked separately in the decision calculation.</p>
+      <code>ΔI = 1,000 × P<sub>ref,kW</sub> × (SR<sub>after</sub> − SR<sub>before</sub>) / V<sub>DC</sub></code>
+      <h3>Rain, wash history and field use</h3><p>The dry outlook assumes no effective rain. Moving the rain control resets both paths at the start of the selected day. It tests timing without assigning a weather probability. Historical rain resets mass when the rolling 24-hour total reaches the configured threshold. The Dubai replay applies its dry-policy wash signals. Imported records use only logged washes. All modeled washes assume zero downtime.</p>
+      <h3>Reference data &amp; assumptions</h3><p>The Dubai reference covers 8,760 hours in 2025 at 24.7655° N, 55.3730° E. Its 10 MWp DC array is a scaled research case. Energy, current and profit are estimates. The reference tariff and wash cost are study assumptions. Field use needs the plant’s clean-power baseline, DC voltage, wash efficacy and contract rates.</p>
+      <p>Weather and irradiance come from NASA POWER. Contains modified Copernicus Atmosphere Monitoring Service information (2025), delivered by Open-Meteo under CC BY 4.0. The array photograph is illustrative.</p>
+      <div class="source-links"><a href="https://power.larc.nasa.gov/" target="_blank" rel="noreferrer">NASA POWER<i data-icon="arrow-up-right"></i></a><a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">CAMS / Open-Meteo<i data-icon="arrow-up-right"></i></a><a href="https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.soiling.hsu.html" target="_blank" rel="noreferrer">HSU / pvlib<i data-icon="arrow-up-right"></i></a><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">Data licence<i data-icon="arrow-up-right"></i></a></div>
+    </div>
+  </dialog>
+  <noscript><div class="error-panel">Enable JavaScript to calculate cleaning decisions.</div></noscript>
+</body>
+</html>
